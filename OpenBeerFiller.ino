@@ -24,14 +24,12 @@
 // AVR(UNO) Libraries.
 #ifdef __AVR__
 #include <TimerOne.h>;
-#include <Wire.h> 
-// LiquidCrystal_I2C.h: https://github.com/johnrickman/LiquidCrystal_I2C
-#include <LiquidCrystal_I2C.h>
 #endif;
 
 // Project specific includes.
 #include "Config.h";
 #include "InputConfig.h";
+#include "2004LCD.h"
 
 /**
  * ***************************************************************************
@@ -43,9 +41,8 @@ volatile bool fillSensor2Triggered = false;
 volatile bool fillSensor3Triggered = false;
 bool idleMessageDisplayed = false;
 enum ProgramState {UNDEF,IDLE,START,FILLING,STOP};
-String ProgramStateText[] = {"UNDEF", "IDLE", "FEED", "FILLING", "STOP"};
+char ProgramStateText[5][8] = {"UNDEF", "IDLE", "FEED", "FILLING", "STOP"};
 ProgramState currentState = UNDEF;
-LiquidCrystal_I2C lcd(0x27, 16, 2);
 
 /**
  * ***************************************************************************
@@ -82,19 +79,6 @@ void setupPins() {
 void setupFillSensorsTimer() {
   Timer1.initialize(FILL_SENSORS_TIMER_FREQUENCY);
   Timer1.attachInterrupt(checkFillSensors);
-}
-
-/**
- * Print current Status to LCD
- */
-void printLCD(String line1, int pos1, String line2, int pos2, bool clr = true) {
-  if (clr) {
-    lcd.clear();
-  }
-  lcd.setCursor(pos1,0);
-  lcd.print(line1);
-  lcd.setCursor(pos2,1);
-  lcd.print(line2);
 }
 
 /**
@@ -149,6 +133,8 @@ void triggerFullFillSensor3() {
  * Return whether all fill sensors have been triggered or not.
  */
 bool allFillSensorsTriggered() {
+  fillingDisplay();
+  updateLCD();
   return fillSensor1Triggered && fillSensor2Triggered && fillSensor3Triggered;
 }
 
@@ -195,7 +181,10 @@ void closeAllBeerFillerTubes() {
  */
 void purgeCO2( bool retract = false ) {
   Serial.println("Purging CO2");
-  printLCD("PURGING", 0, String(FILL_SENSORS_TRIGGER), 0);
+  char statusOutput[21];
+  sprintf(statusOutput, "%s%s", "Status: ", "PURGING");
+  updateLine(0, statusOutput);
+  updateLCD();
   digitalWrite(CO2_PURGE_SOL, HIGH);
   if(!retract) {
     delay(CO2_PURGE_PERIOD);
@@ -320,9 +309,6 @@ void resetUnit() {
   digitalWrite(CO2_PURGE_SOL, LOW);
   Serial.println("Done resetting unit");
   changeProgramState(IDLE);
-  lcd.init();
-  lcd.backlight();
-  printLCD(ProgramStateText[currentState], 0, String(FILL_SENSORS_TRIGGER), 0);
 }
 
 /**
@@ -336,11 +322,13 @@ void changeProgramState(ProgramState state) {
   currentState = state;
   Serial.print("Program state changed: ");
   Serial.println(currentState);
-
-  printLCD(ProgramStateText[currentState], 0, String(FILL_SENSORS_TRIGGER), 0);
-  if (currentState == FILLING) {
-    printLCD("***", 13, String(FILL_SENSORS_TRIGGER), 0, false);
-  }
+  char stateOutput[21];
+  char statusOutput[21];
+  sprintf(statusOutput, "%s%s", "Status: ", ProgramStateText[currentState]);
+  sprintf(stateOutput, "%s%d", "Trigger: ", FILL_SENSORS_TRIGGER);
+  updateLine(0, statusOutput);
+  updateLine(1, stateOutput);
+  updateLine(3, "");
 }
 
 /**
@@ -360,6 +348,15 @@ void alwaysRun() {
   readStopButton();
 }
 
+void fillingDisplay() {
+  String fillStatus;
+  char statusOutput[21];
+  if (fillSensor1Triggered) { fillStatus +=" "; } else { fillStatus +="*"; }
+  if (fillSensor2Triggered) { fillStatus +=" "; } else { fillStatus +="*"; }
+  if (fillSensor3Triggered) { fillStatus +=" "; } else { fillStatus +="*"; }
+  sprintf(statusOutput, fillStatus.c_str());
+  updateLine(3, statusOutput);
+}
 /**
  * ***************************************************************************
  * ***************************** MAIN FUNCTIONS ******************************
@@ -369,8 +366,12 @@ void alwaysRun() {
 /**
  * Main setup routine.
  */
+
 void setup() {
   Serial.begin(115200);//Serial.begin(9600);
+  setupLCD();
+  updateLine(0, "Initialising...");
+  updateLCD();
   setupPins();
   setupFillSensorsTimer();
   resetUnit();
@@ -380,6 +381,7 @@ void setup() {
  * The main program loop, where all the magic comes togetger.
  */
 void loop() {
+  updateLCD();
   switch(currentState) {
     case IDLE:
       idleState();
@@ -389,15 +391,6 @@ void loop() {
       break;
     case FILLING:
       fillingState();
-      if (fillSensor1Triggered) {
-        printLCD(" ", 13, String(FILL_SENSORS_TRIGGER), 0, false);
-      }
-      if (fillSensor2Triggered) {
-        printLCD(" ", 14, String(FILL_SENSORS_TRIGGER), 0, false);
-      }
-      if (fillSensor3Triggered) {
-        printLCD(" ", 15, String(FILL_SENSORS_TRIGGER), 0, false);
-      }
       break;
     case STOP:
       stopState();
