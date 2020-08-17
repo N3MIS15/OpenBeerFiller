@@ -3,7 +3,8 @@
  * Copyright (c) 2020 Gerhard Potgieter [https://gerhardpotgieter.com]
  *
  * Based on an idea by Christopher Harrison-Hawkes [https://harrisonsbrewery.com]
- *
+ * Modified By David Gray (https://github.com/N3MIS15)
+ * 
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
@@ -18,18 +19,20 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-#pragma once;
 
+#pragma once
+#include <Arduino.h>
 /**
  * Pin definitions
  */
-#define START_BUTTON 8
-#define BEER_INLET_SOL_1 5
-#define BEER_INLET_SOL_2 6
-#define BEER_INLET_SOL_3 7
-#define BEER_FILL_SENSOR_1 A0
-#define BEER_FILL_SENSOR_2 A1
-#define BEER_FILL_SENSOR_3 A2
-#define CO2_PURGE_SOL 4
-#define FILL_RAIL_SOL 3
-#define BEER_BELT_SOL 2
+#define BEER_INLET_SOL    7
+#define BEER_FILL_SENSOR  A0
+#define START_BUTTON      10
+#define CO2_PURGE_SOL     6
+#define SERVO_SIGNAL      4
+#define ROT_ENC_A         3
+#define ROT_ENC_B         2
+#define ROT_ENC_BUTTON    12
+#define STEPPER_STEP      8
+#define STEPPER_DIR       9
+#define END_STOP          11
